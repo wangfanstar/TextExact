@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文本行提取工具</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Consolas', 'Courier New', monospace; background: #1e1e2e; color: #cdd6f4; min-height: 100vh; padding: 20px; }
+  .page-wrap { padding: 0 20% 0 0; }
+  h1 { text-align: center; color: #89b4fa; margin-bottom: 20px; font-size: 1.4em; letter-spacing: 1px; }
+
+  /* 两栏布局：左侧 | 5%间距 | 主内容 */
+  .layout-body { display: flex; gap: 5%; align-items: flex-start; }
+  .main-content { flex: 1; min-width: 0; }
+
+  /* 帮助侧边栏 */
+  .help-sidebar {
+    width: 29.3%; flex-shrink: 0;
+    position: sticky; top: 20px;
+    background: #181825; border: 1px solid #313244; border-radius: 8px;
+    overflow: hidden;
+  }
+  .help-sidebar-title {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px; border-bottom: 1px solid #313244;
+    color: #cba6f7; font-size: 0.85em; font-weight: bold; letter-spacing: 0.5px;
+  }
+  .help-body { padding: 14px; }
+  .help-grid { display: flex; flex-direction: column; gap: 14px; }
+
+  .help-section h3 { color: #a6e3a1; font-size: 0.78em; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .help-section ul { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+  .help-section li { font-size: 0.78em; color: #bac2de; line-height: 1.5; display: flex; gap: 6px; }
+  .help-section li::before { content: '▸'; color: #6c7086; flex-shrink: 0; }
+
+  .kbd {
+    display: inline-block; background: #313244; border: 1px solid #585b70;
+    border-radius: 3px; padding: 1px 6px; font-size: 0.85em;
+    color: #cdd6f4; font-family: inherit; white-space: nowrap;
+  }
+  .tag-demo {
+    display: inline-block; border-radius: 3px; padding: 1px 7px;
+    font-size: 0.82em; border: 1px solid #89b4fa; color: #89b4fa; background: #1e3a5f;
+  }
+  .help-divider { border: none; border-top: 1px solid #313244; margin: 12px 0; }
+
+  .regex-table { width: 100%; border-collapse: collapse; font-size: 0.76em; margin-top: 4px; }
+  .regex-table th { color: #6c7086; font-weight: normal; text-align: left; padding: 2px 6px 2px 0; border-bottom: 1px solid #313244; }
+  .regex-table td { padding: 3px 6px 3px 0; color: #bac2de; vertical-align: top; }
+  .regex-table td:first-child { color: #f9e2af; font-family: 'Consolas', monospace; white-space: nowrap; }
+
+  .panel { background: #313244; border-radius: 8px; padding: 16px; margin-bottom: 16px; border: 1px solid #45475a; }
+  .panel-title { color: #a6e3a1; font-size: 0.85em; font-weight: bold; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* 上传区域 */
+  #drop-zone {
+    border: 2px dashed #6c7086;
+    border-radius: 6px;
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #6c7086;
+  }
+  #drop-zone:hover, #drop-zone.dragover { border-color: #89b4fa; color: #89b4fa; background: #1e1e2e44; }
+  #drop-zone input { display: none; }
+  #drop-zone .icon { font-size: 2em; margin-bottom: 8px; }
+  #drop-zone p { font-size: 0.9em; }
+
+  /* 文件列表 */
+  #file-list { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .file-tag {
+    background: #45475a; border-radius: 4px; padding: 4px 10px;
+    font-size: 0.8em; display: flex; align-items: center; gap: 6px;
+  }
+  .file-tag .remove { cursor: pointer; color: #f38ba8; font-weight: bold; }
+  .file-tag .remove:hover { color: #fab387; }
+
+  /* 搜索区域 */
+  .search-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  input[type="text"] {
+    flex: 1; min-width: 180px;
+    background: #1e1e2e; border: 1px solid #6c7086; border-radius: 5px;
+    color: #cdd6f4; padding: 8px 12px; font-family: inherit; font-size: 0.95em;
+    outline: none; transition: border-color 0.2s;
+  }
+  input[type="text"]:focus { border-color: #89b4fa; }
+
+  /* 多关键词标签 */
+  #pattern-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; min-height: 28px; }
+  .ptag {
+    display: flex; align-items: center; gap: 6px;
+    border-radius: 4px; padding: 3px 10px; font-size: 0.82em;
+    border: 1px solid; font-family: 'Consolas', monospace;
+  }
+  .ptag .ptag-remove { cursor: pointer; font-weight: bold; opacity: 0.7; }
+  .ptag .ptag-remove:hover { opacity: 1; }
+  /* 颜色循环 */
+  .ptag-c0 { background:#1e3a5f; border-color:#89b4fa; color:#89b4fa; }
+  .ptag-c1 { background:#2d4a1e; border-color:#a6e3a1; color:#a6e3a1; }
+  .ptag-c2 { background:#4a2d1e; border-color:#fab387; color:#fab387; }
+  .ptag-c3 { background:#3a1e4a; border-color:#cba6f7; color:#cba6f7; }
+  .ptag-c4 { background:#4a3a1e; border-color:#f9e2af; color:#f9e2af; }
+  .ptag-c5 { background:#1e4a4a; border-color:#94e2d5; color:#94e2d5; }
+  .ptag-c6 { background:#4a1e2d; border-color:#f38ba8; color:#f38ba8; }
+  .ptag-c7 { background:#2d3a4a; border-color:#74c7ec; color:#74c7ec; }
+
+  /* 匹配模式选择 */
+  .mode-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+  .mode-label { font-size: 0.82em; color: #a6adc8; }
+  .mode-btn {
+    padding: 3px 12px; border-radius: 4px; border: 1px solid #6c7086;
+    background: #1e1e2e; color: #a6adc8; cursor: pointer;
+    font-size: 0.82em; font-family: inherit; transition: all 0.15s;
+  }
+  .mode-btn.active { background: #45475a; color: #cdd6f4; border-color: #89b4fa; }
+  .hint-empty { font-size: 0.78em; color: #585b70; font-style: italic; }
+
+  .opts { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .opt-label { display: flex; align-items: center; gap: 5px; cursor: pointer; font-size: 0.88em; color: #bac2de; user-select: none; }
+  .opt-label input[type="checkbox"] { accent-color: #89b4fa; width: 15px; height: 15px; cursor: pointer; }
+
+  /* 按钮 */
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+  button {
+    padding: 8px 20px; border-radius: 5px; border: none; cursor: pointer;
+    font-family: inherit; font-size: 0.9em; font-weight: bold; transition: all 0.2s;
+  }
+  .btn-primary { background: #89b4fa; color: #1e1e2e; }
+  .btn-primary:hover { background: #b4befe; }
+  .btn-danger  { background: #f38ba8; color: #1e1e2e; }
+  .btn-danger:hover  { background: #fab387; }
+  .btn-success { background: #a6e3a1; color: #1e1e2e; }
+  .btn-success:hover { background: #94e2d5; }
+  .btn-neutral { background: #45475a; color: #cdd6f4; }
+  .btn-neutral:hover { background: #585b70; }
+
+  /* 状态栏 */
+  #status { font-size: 0.82em; color: #a6adc8; margin-top: 6px; min-height: 1.2em; }
+  #status.ok  { color: #a6e3a1; }
+  #status.err { color: #f38ba8; }
+
+  /* 结果区域 */
+  .result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  #result-count { font-size: 0.82em; color: #a6adc8; }
+  #output {
+    width: 100%; min-height: 340px;
+    background: #1e1e2e; border: 1px solid #45475a; border-radius: 5px;
+    color: #cdd6f4; padding: 12px; font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.88em; line-height: 1.6; resize: vertical; outline: none;
+    transition: border-color 0.2s;
+  }
+  #output:focus { border-color: #89b4fa; }
+
+  /* 下载文件名 */
+  .download-row { display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+  .download-row input { max-width: 260px; }
+  .download-row label { font-size: 0.85em; color: #bac2de; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+<h1>文本行提取工具</h1>
+
+<div class="layout-body">
+
+<!-- 帮助侧边栏 -->
+<div class="help-sidebar">
+  <div class="help-sidebar-title"><span>?</span><span>使用说明</span></div>
+  <div class="help-body">
+    <div class="help-grid">
+
+      <!-- 基本流程 -->
+      <div class="help-section">
+        <h3>基本流程</h3>
+        <ul>
+          <li>① 上传文件：点击上传区域或拖拽文件，支持 .c .h .txt .log .csv 等任意文本文件，可一次上传多个。</li>
+          <li>② 添加关键词：在输入框输入关键词后按 <span class="kbd">Enter</span> 或点击「+ 添加」，可添加多个关键词（彩色标签区分）。</li>
+          <li>③ 选择匹配选项（大小写、正则等）。</li>
+          <li>④ 点击「提取匹配行」或按 <span class="kbd">Ctrl</span>+<span class="kbd">Enter</span> 执行搜索。</li>
+          <li>⑤ 在结果框中直接编辑内容，填写文件名后点击「下载结果文件」保存。</li>
+        </ul>
+      </div>
+
+      <!-- 多关键词说明 -->
+      <div class="help-section">
+        <h3>多关键词匹配模式</h3>
+        <ul>
+          <li><b style="color:#cdd6f4">OR（任意命中）</b>：一行只需包含任意一个关键词即被提取，适合收集多个相关主题的行。</li>
+          <li><b style="color:#cdd6f4">AND（全部命中）</b>：一行必须同时包含所有关键词才被提取，适合精确过滤。</li>
+          <li><b style="color:#cdd6f4">合并</b>：所有匹配行按文件顺序混合输出。</li>
+          <li><b style="color:#cdd6f4">按关键词分组</b>：每个关键词单独输出其匹配结果，带分组标题，方便对比。</li>
+        </ul>
+      </div>
+
+      <!-- 选项说明 -->
+      <div class="help-section">
+        <h3>选项说明</h3>
+        <ul>
+          <li><b style="color:#cdd6f4">区分大小写</b>：勾选后 <span class="tag-demo">ABC</span> 与 <span class="tag-demo">abc</span> 视为不同字符串。</li>
+          <li><b style="color:#cdd6f4">正则表达式</b>：勾选后关键词按正则语法解析，支持完整 JavaScript 正则。</li>
+          <li><b style="color:#cdd6f4">显示文件名</b>：每行结果前加上来源文件名 <span class="tag-demo">[filename]</span>。</li>
+          <li><b style="color:#cdd6f4">显示行号</b>：每行结果前加上原始行号 <span class="tag-demo">L42:</span>。</li>
+        </ul>
+      </div>
+
+      <!-- 正则速查 -->
+      <div class="help-section">
+        <h3>常用正则速查</h3>
+        <table class="regex-table">
+          <tr><th>表达式</th><th>含义</th></tr>
+          <tr><td>.</td><td>任意单个字符</td></tr>
+          <tr><td>.*</td><td>任意字符（0 个或多个）</td></tr>
+          <tr><td>\d+</td><td>一个或多个数字</td></tr>
+          <tr><td>\bword\b</td><td>精确匹配单词 word</td></tr>
+          <tr><td>foo|bar</td><td>匹配 foo 或 bar</td></tr>
+          <tr><td>^text</td><td>行首以 text 开头</td></tr>
+          <tr><td>text$</td><td>行尾以 text 结尾</td></tr>
+          <tr><td>[A-Z]</td><td>大写字母 A–Z 之一</td></tr>
+          <tr><td>\s+</td><td>一个或多个空白字符</td></tr>
+          <tr><td>(a|b)c</td><td>ac 或 bc</td></tr>
+        </table>
+      </div>
+
+    </div><!-- /help-grid -->
+
+    <hr class="help-divider">
+    <p style="font-size:0.72em;color:#585b70">所有处理均在本地浏览器完成，不上传任何服务器。</p>
+  </div>
+</div><!-- /help-sidebar -->
+
+<!-- 主内容 -->
+<div class="main-content">
+
+<!-- 上传 -->
+<div class="panel">
+  <div class="panel-title">上传文件</div>
+  <div id="drop-zone">
+    <input type="file" id="file-input" multiple accept="*/*">
+    <div class="icon">📂</div>
+    <p>点击选择文件，或将文件拖拽到此处</p>
+    <p style="font-size:0.78em;margin-top:6px;color:#585b70">.c .h .txt .log .csv 等文本文件均支持</p>
+  </div>
+  <div id="file-list"></div>
+</div>
+
+<!-- 搜索 -->
+<div class="panel">
+  <div class="panel-title">搜索设置</div>
+
+  <!-- 输入行 -->
+  <div class="search-row">
+    <input type="text" id="search-input" placeholder="输入关键词或正则，按 Enter 或点击「添加」..." spellcheck="false">
+    <button class="btn-primary" onclick="addPattern()" style="white-space:nowrap">+ 添加</button>
+    <button class="btn-neutral" onclick="clearPatterns()" style="white-space:nowrap">清除全部</button>
+  </div>
+
+  <!-- 关键词标签列表 -->
+  <div id="pattern-tags"><span class="hint-empty">暂无关键词，请在上方输入后添加</span></div>
+
+  <!-- 多词匹配模式 -->
+  <div class="mode-row">
+    <span class="mode-label">多关键词匹配：</span>
+    <button class="mode-btn active" id="mode-or"  onclick="setMode('or')">OR（任意命中）</button>
+    <button class="mode-btn"        id="mode-and" onclick="setMode('and')">AND（全部命中）</button>
+    <span class="mode-label" style="margin-left:8px;">结果分组：</span>
+    <button class="mode-btn active" id="group-merge"  onclick="setGroup('merge')">合并</button>
+    <button class="mode-btn"        id="group-split"  onclick="setGroup('split')">按关键词分组</button>
+  </div>
+
+  <div class="opts" style="margin-top:10px;">
+    <label class="opt-label"><input type="checkbox" id="opt-case"> 区分大小写</label>
+    <label class="opt-label"><input type="checkbox" id="opt-regex"> 正则表达式</label>
+    <label class="opt-label"><input type="checkbox" id="opt-filename"> 显示文件名</label>
+    <label class="opt-label"><input type="checkbox" id="opt-linenum"> 显示行号</label>
+  </div>
+  <div class="btn-row">
+    <button class="btn-primary" onclick="doSearch()">提取匹配行</button>
+    <button class="btn-neutral" onclick="clearFiles()">清除文件</button>
+    <button class="btn-danger"  onclick="clearOutput()">清空结果</button>
+  </div>
+  <div id="status"></div>
+</div>
+
+<!-- 结果 -->
+<div class="panel">
+  <div class="result-header">
+    <div class="panel-title" style="margin-bottom:0">提取结果（可手动编辑）</div>
+    <div id="result-count"></div>
+  </div>
+  <textarea id="output" spellcheck="false" placeholder="匹配的行将显示在此处，可直接编辑内容..."></textarea>
+  <div class="download-row">
+    <label>保存文件名：</label>
+    <input type="text" id="filename" value="extracted.txt" placeholder="output.txt">
+    <button class="btn-success" onclick="downloadOutput()">下载结果文件</button>
+  </div>
+</div>
+
+<script>
+// ─── 文件管理 ───────────────────────────────────────────────
+const fileMap = new Map(); // name -> { file, text }
+
+const dropZone   = document.getElementById('drop-zone');
+const fileInput  = document.getElementById('file-input');
+const fileList   = document.getElementById('file-list');
+const status     = document.getElementById('status');
+
+dropZone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => addFiles(fileInput.files));
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  addFiles(e.dataTransfer.files);
+});
+
+async function addFiles(fileList_) {
+  const arr = [...fileList_];
+  setStatus('正在读取文件...', '');
+  let added = 0;
+  for (const f of arr) {
+    if (fileMap.has(f.name)) continue; // 跳过重复
+    try {
+      const text = await readFileText(f);
+      fileMap.set(f.name, { file: f, text });
+      added++;
+    } catch(e) {
+      console.warn('跳过无法读取的文件:', f.name, e);
+    }
+  }
+  renderFileTags();
+  setStatus(`已加载 ${fileMap.size} 个文件${added > 0 ? `（新增 ${added} 个）` : ''}`, 'ok');
+  fileInput.value = '';
+}
+
+function readFileText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = e => resolve(e.target.result);
+    reader.onerror = () => reject(new Error('读取失败'));
+    reader.readAsText(file, 'utf-8');
+  });
+}
+
+function renderFileTags() {
+  fileList.innerHTML = '';
+  for (const name of fileMap.keys()) {
+    const tag = document.createElement('div');
+    tag.className = 'file-tag';
+    tag.innerHTML = `<span>${escHtml(name)}</span><span class="remove" title="移除" onclick="removeFile('${escAttr(name)}')">✕</span>`;
+    fileList.appendChild(tag);
+  }
+}
+
+function removeFile(name) {
+  fileMap.delete(name);
+  renderFileTags();
+  setStatus(`已移除 ${name}，当前 ${fileMap.size} 个文件`, '');
+}
+
+function clearFiles() {
+  fileMap.clear();
+  renderFileTags();
+  setStatus('已清除所有文件', '');
+}
+
+// ─── 多关键词管理 ────────────────────────────────────────────
+const patterns = []; // [{ raw, regex }]
+let matchMode  = 'or';   // 'or' | 'and'
+let groupMode  = 'merge'; // 'merge' | 'split'
+const COLORS   = 8;
+
+function addPattern() {
+  const input = document.getElementById('search-input');
+  const raw   = input.value.trim();
+  if (!raw) return;
+  if (patterns.find(p => p.raw === raw)) { setStatus(`"${raw}" 已存在`, 'err'); return; }
+  const caseSens = document.getElementById('opt-case').checked;
+  const useRegex = document.getElementById('opt-regex').checked;
+  let regex;
+  try {
+    const flags = caseSens ? 'g' : 'gi';
+    regex = useRegex ? new RegExp(raw, flags) : new RegExp(escRegex(raw), flags);
+  } catch(e) {
+    setStatus('正则错误：' + e.message, 'err'); return;
+  }
+  patterns.push({ raw, regex, colorIdx: patterns.length % COLORS });
+  input.value = '';
+  renderPatternTags();
+  setStatus(`已添加关键词，共 ${patterns.length} 个`, 'ok');
+}
+
+function removePattern(idx) {
+  patterns.splice(idx, 1);
+  // 重新分配颜色序号
+  patterns.forEach((p, i) => p.colorIdx = i % COLORS);
+  renderPatternTags();
+}
+
+function clearPatterns() {
+  patterns.length = 0;
+  renderPatternTags();
+  setStatus('已清除所有关键词', '');
+}
+
+function renderPatternTags() {
+  const container = document.getElementById('pattern-tags');
+  if (patterns.length === 0) {
+    container.innerHTML = '<span class="hint-empty">暂无关键词，请在上方输入后添加</span>';
+    return;
+  }
+  container.innerHTML = patterns.map((p, i) =>
+    `<span class="ptag ptag-c${p.colorIdx}">
+       <span>${escHtml(p.raw)}</span>
+       <span class="ptag-remove" onclick="removePattern(${i})" title="移除">✕</span>
+     </span>`
+  ).join('');
+}
+
+function setMode(m) {
+  matchMode = m;
+  document.getElementById('mode-or').classList.toggle('active',  m === 'or');
+  document.getElementById('mode-and').classList.toggle('active', m === 'and');
+}
+
+function setGroup(g) {
+  groupMode = g;
+  document.getElementById('group-merge').classList.toggle('active', g === 'merge');
+  document.getElementById('group-split').classList.toggle('active', g === 'split');
+}
+
+// 重建 regex（每次搜索前，确保 flags 与当前选项一致）
+function rebuildRegexes() {
+  const caseSens = document.getElementById('opt-case').checked;
+  const useRegex = document.getElementById('opt-regex').checked;
+  const flags    = caseSens ? 'g' : 'gi';
+  for (const p of patterns) {
+    try {
+      p.regex = useRegex ? new RegExp(p.raw, flags) : new RegExp(escRegex(p.raw), flags);
+    } catch(e) {
+      setStatus(`关键词 "${p.raw}" 正则错误：${e.message}`, 'err');
+      return false;
+    }
+  }
+  return true;
+}
+
+// ─── 搜索 ───────────────────────────────────────────────────
+function doSearch() {
+  const showFile = document.getElementById('opt-filename').checked;
+  const showLine = document.getElementById('opt-linenum').checked;
+
+  // 若输入框有内容但未添加，自动添加
+  const inputVal = document.getElementById('search-input').value.trim();
+  if (inputVal && !patterns.find(p => p.raw === inputVal)) addPattern();
+
+  if (patterns.length === 0) { setStatus('请至少添加一个关键词', 'err'); return; }
+  if (fileMap.size === 0)    { setStatus('请先上传文件', 'err'); return; }
+  if (!rebuildRegexes())     return;
+
+  const outputLines = [];
+  let totalMatch = 0;
+
+  if (groupMode === 'split') {
+    // 按关键词分组
+    for (const p of patterns) {
+      const groupLines = [];
+      for (const [name, { text }] of fileMap) {
+        const fileLines = text.split(/\r?\n/);
+        fileLines.forEach((line, idx) => {
+          p.regex.lastIndex = 0;
+          if (p.regex.test(line)) {
+            let out = '';
+            if (showFile) out += `[${name}] `;
+            if (showLine) out += `L${idx + 1}: `;
+            out += line;
+            groupLines.push(out);
+          }
+        });
+      }
+      outputLines.push(`\n▶ 关键词「${p.raw}」— ${groupLines.length} 行`);
+      outputLines.push(...groupLines);
+      totalMatch += groupLines.length;
+    }
+  } else {
+    // 合并模式
+    for (const [name, { text }] of fileMap) {
+      const fileLines = text.split(/\r?\n/);
+      const matched = [];
+      fileLines.forEach((line, idx) => {
+        const hit = matchMode === 'and'
+          ? patterns.every(p => { p.regex.lastIndex = 0; return p.regex.test(line); })
+          : patterns.some(p  => { p.regex.lastIndex = 0; return p.regex.test(line); });
+        if (hit) {
+          let out = '';
+          if (showFile) out += `[${name}] `;
+          if (showLine) out += `L${idx + 1}: `;
+          out += line;
+          matched.push(out);
+        }
+      });
+      if (matched.length > 0) {
+        if (showFile && fileMap.size > 1) outputLines.push(`\n── ${name} (${matched.length} 行) ──`);
+        outputLines.push(...matched);
+        totalMatch += matched.length;
+      }
+    }
+  }
+
+  document.getElementById('output').value = outputLines.join('\n').replace(/^\n/, '');
+  document.getElementById('result-count').textContent = `共匹配 ${totalMatch} 行`;
+  setStatus(
+    `搜索完成：${patterns.length} 个关键词 × ${fileMap.size} 个文件，` +
+    `匹配 ${totalMatch} 行（${matchMode.toUpperCase()} 模式）`,
+    totalMatch > 0 ? 'ok' : ''
+  );
+}
+
+// ─── 下载 ───────────────────────────────────────────────────
+function downloadOutput() {
+  const content  = document.getElementById('output').value;
+  const filename = document.getElementById('filename').value.trim() || 'extracted.txt';
+  if (!content) { setStatus('结果为空，无法下载', 'err'); return; }
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  setStatus(`已下载：${filename}`, 'ok');
+}
+
+function clearOutput() {
+  document.getElementById('output').value = '';
+  document.getElementById('result-count').textContent = '';
+  setStatus('结果已清空', '');
+}
+
+// ─── 工具函数 ───────────────────────────────────────────────
+function setStatus(msg, cls = '') {
+  status.textContent = msg;
+  status.className = cls;
+}
+function escRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+function escHtml(s)  { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escAttr(s)  { return s.replace(/'/g,"\\'"); }
+
+// Enter 键添加关键词，Ctrl+Enter 触发搜索
+document.getElementById('search-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.ctrlKey) { e.preventDefault(); addPattern(); }
+  if (e.key === 'Enter' &&  e.ctrlKey) { e.preventDefault(); doSearch(); }
+});
+
+
+</script>
+</div><!-- /main-content -->
+</div><!-- /layout-body -->
+</div><!-- /page-wrap -->
+</body>
+</html>
