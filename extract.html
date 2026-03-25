@@ -247,6 +247,16 @@
         </ul>
       </div>
 
+      <!-- 结果操作 -->
+      <div class="help-section">
+        <h3>结果操作</h3>
+        <ul>
+          <li><b style="color:#cdd6f4">手动编辑</b>：结果文本框可直接修改，编辑后下载或新标签页查看的内容均以修改后为准。</li>
+          <li><b style="color:#cdd6f4">↗ 新标签页打开</b>：将当前结果在新标签页中展示，便于全屏阅读或复制。</li>
+          <li><b style="color:#cdd6f4">下载结果文件</b>：填写文件名后保存为本地文本文件。</li>
+        </ul>
+      </div>
+
       <!-- 选项 & 正则速查 -->
       <div class="help-section">
         <h3>选项 &amp; 常用正则</h3>
@@ -383,7 +393,10 @@
 <div class="panel">
   <div class="result-header">
     <div class="panel-title" style="margin-bottom:0">提取结果（可手动编辑）</div>
-    <div id="result-count"></div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div id="result-count"></div>
+      <button class="btn-neutral" onclick="openInNewTab()" style="padding:4px 12px;font-size:0.8em;">↗ 新标签页打开</button>
+    </div>
   </div>
   <textarea id="output" spellcheck="false" placeholder="匹配的行将显示在此处，可直接编辑内容..."></textarea>
   <div class="download-row">
@@ -771,6 +784,15 @@ function doSearch() {
 }
 
 // ─── 下载 ───────────────────────────────────────────────────
+function openInNewTab() {
+  const content = document.getElementById('output').value;
+  if (!content) { setStatus('结果为空', 'err'); return; }
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
 function downloadOutput() {
   const content  = document.getElementById('output').value;
   const filename = document.getElementById('filename').value.trim() || 'extracted.txt';
