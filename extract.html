@@ -68,6 +68,24 @@
   #drop-zone .icon { font-size: 2em; margin-bottom: 8px; }
   #drop-zone p { font-size: 0.9em; }
 
+  /* 路径加载区 */
+  .path-block {
+    margin-top: 12px; padding: 10px 12px;
+    background: #1e1e2e; border: 1px solid #313244; border-radius: 6px;
+  }
+  .path-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+  .path-tab {
+    padding: 3px 12px; border-radius: 4px; border: 1px solid #45475a;
+    background: transparent; color: #6c7086; cursor: pointer;
+    font-size: 0.8em; font-family: inherit; transition: all 0.15s;
+  }
+  .path-tab.active { background: #313244; color: #cdd6f4; border-color: #89b4fa; }
+  .path-input-row { display: flex; gap: 8px; }
+  .path-input-row input { font-size: 0.88em; }
+  #path-status { font-size: 0.78em; margin-top: 5px; min-height: 1em; color: #a6adc8; }
+  #path-status.ok  { color: #a6e3a1; }
+  #path-status.err { color: #f38ba8; }
+
   /* 文件列表 */
   #file-list { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
   .file-tag {
@@ -187,12 +205,23 @@
       <div class="help-section">
         <h3>基本流程</h3>
         <ul>
-          <li>① 上传文件：点击或拖拽，支持 .c .h .txt .log .csv 等文本文件，可批量上传。</li>
+          <li>① 加载文件：拖拽上传、输入 URL 或本地路径均可，三种方式可混合使用。</li>
           <li>② 添加包含关键词：输入后按 <span class="kbd">Enter</span> 或「+ 添加」，多个关键词彩色标签区分。</li>
           <li>③ 可选：添加排除关键词，命中排除词的行将从结果中剔除。</li>
           <li>④ 设置匹配选项（大小写、正则、分组等）。</li>
           <li>⑤ 点击「提取匹配行」或按 <span class="kbd">Ctrl</span>+<span class="kbd">Enter</span> 执行。</li>
           <li>⑥ 在结果框直接编辑，填写文件名后点击「下载结果文件」保存。</li>
+        </ul>
+      </div>
+
+      <!-- 文件来源 -->
+      <div class="help-section">
+        <h3>文件来源</h3>
+        <ul>
+          <li><b style="color:#cdd6f4">拖拽 / 点击上传</b>：支持 .c .h .txt .log .csv 等任意文本文件，可批量选择。</li>
+          <li><b style="color:#cdd6f4">🌐 网络地址</b>：输入 HTTP / HTTPS URL，按 <span class="kbd">Enter</span> 或「加载」拉取远程文件，需目标服务器允许跨域（CORS）。</li>
+          <li><b style="color:#cdd6f4">💾 本地路径</b>：输入绝对路径如 <span class="tag-demo">C:\logs\a.txt</span>，通过 <span class="tag-demo">file://</span> 协议加载；部分浏览器有限制，失败时请改用拖拽上传。</li>
+          <li>三种来源加载的文件统一进入文件列表，可随时单独移除。</li>
         </ul>
       </div>
 
@@ -214,7 +243,7 @@
           <li>在红色区域输入排除词，命中的行从结果中剔除，以 <span class="tag-demo" style="border-color:#f38ba8;color:#f38ba8;background:#3a1a1a">⊘ 词</span> 标签显示。</li>
           <li><b style="color:#cdd6f4">OR（含任一即排除）</b>：含任意一个排除词即剔除（默认）。</li>
           <li><b style="color:#cdd6f4">AND（全部命中才排除）</b>：须同时包含所有排除词才剔除。</li>
-          <li>排除词拥有独立的大小写、正则设置，标签角标 <span class="tag-demo">[Aa]</span> 表示区分大小写，<span class="tag-demo">[.*]</span> 表示正则。</li>
+          <li>排除词有独立的大小写、正则设置，标签角标 <span class="tag-demo">[Aa]</span> 表示区分大小写，<span class="tag-demo">[.*]</span> 表示正则。</li>
         </ul>
       </div>
 
@@ -251,13 +280,44 @@
 
 <!-- 上传 -->
 <div class="panel">
-  <div class="panel-title">上传文件</div>
+  <div class="panel-title">文件来源</div>
+
+  <!-- 本地上传 -->
   <div id="drop-zone">
     <input type="file" id="file-input" multiple accept="*/*">
     <div class="icon">📂</div>
     <p>点击选择文件，或将文件拖拽到此处</p>
     <p style="font-size:0.78em;margin-top:6px;color:#585b70">.c .h .txt .log .csv 等文本文件均支持</p>
   </div>
+
+  <!-- 路径加载 -->
+  <div class="path-block">
+    <div class="path-tabs">
+      <button class="path-tab active" id="tab-url"   onclick="switchTab('url')">🌐 网络地址（URL）</button>
+      <button class="path-tab"        id="tab-local" onclick="switchTab('local')">💾 本地路径</button>
+    </div>
+
+    <!-- URL 输入 -->
+    <div id="pane-url">
+      <div class="path-input-row">
+        <input type="text" id="url-input" placeholder="https://example.com/file.txt" spellcheck="false">
+        <button class="btn-primary" onclick="loadFromUrl()" style="white-space:nowrap">加载</button>
+      </div>
+      <div style="font-size:0.74em;color:#585b70;margin-top:4px">支持 HTTP / HTTPS，需目标服务器允许跨域访问（CORS）</div>
+    </div>
+
+    <!-- 本地路径输入 -->
+    <div id="pane-local" style="display:none">
+      <div class="path-input-row">
+        <input type="text" id="local-input" placeholder="C:\path\to\file.txt 或 \\server\share\file.txt" spellcheck="false">
+        <button class="btn-primary" onclick="loadFromLocal()" style="white-space:nowrap">加载</button>
+      </div>
+      <div style="font-size:0.74em;color:#585b70;margin-top:4px">本地路径通过 <code style="color:#f9e2af">file://</code> 协议加载，需浏览器允许本地文件访问；网络共享路径（UNC）请改用网络地址输入</div>
+    </div>
+
+    <div id="path-status"></div>
+  </div>
+
   <div id="file-list"></div>
 </div>
 
@@ -335,7 +395,7 @@
 
 <script>
 // ─── 文件管理 ───────────────────────────────────────────────
-const fileMap = new Map(); // name -> { file, text }
+const fileMap = new Map(); // name -> { text }
 
 const dropZone   = document.getElementById('drop-zone');
 const fileInput  = document.getElementById('file-input');
@@ -380,6 +440,79 @@ function readFileText(file) {
     reader.readAsText(file, 'utf-8');
   });
 }
+
+// ─── 路径加载 ────────────────────────────────────────────────
+let currentTab = 'url';
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('pane-url').style.display   = tab === 'url'   ? '' : 'none';
+  document.getElementById('pane-local').style.display = tab === 'local' ? '' : 'none';
+  document.getElementById('tab-url').classList.toggle('active',   tab === 'url');
+  document.getElementById('tab-local').classList.toggle('active', tab === 'local');
+  setPathStatus('', '');
+}
+
+function setPathStatus(msg, cls = '') {
+  const el = document.getElementById('path-status');
+  el.textContent = msg;
+  el.className   = cls;
+}
+
+async function loadFromUrl() {
+  const raw = document.getElementById('url-input').value.trim();
+  if (!raw) { setPathStatus('请输入 URL', 'err'); return; }
+  let url;
+  try { url = new URL(raw); } catch { setPathStatus('URL 格式无效', 'err'); return; }
+  const name = decodeURIComponent(url.pathname.split('/').pop()) || raw;
+  if (fileMap.has(name)) { setPathStatus(`"${name}" 已加载`, 'err'); return; }
+  setPathStatus('正在加载...', '');
+  try {
+    const res = await fetch(raw);
+    if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+    const text = await res.text();
+    fileMap.set(name, { text });
+    renderFileTags();
+    document.getElementById('url-input').value = '';
+    setPathStatus(`已加载：${name}`, 'ok');
+    setStatus(`已加载 ${fileMap.size} 个文件`, 'ok');
+  } catch(e) {
+    setPathStatus('加载失败：' + e.message, 'err');
+  }
+}
+
+async function loadFromLocal() {
+  const raw = document.getElementById('local-input').value.trim();
+  if (!raw) { setPathStatus('请输入本地路径', 'err'); return; }
+  // 转换为 file:// URL
+  const normalized = raw.replace(/\\/g, '/');
+  const fileUrl = normalized.startsWith('/')
+    ? 'file://' + normalized
+    : 'file:///' + normalized;
+  const name = normalized.split('/').pop() || raw;
+  if (fileMap.has(name)) { setPathStatus(`"${name}" 已加载`, 'err'); return; }
+  setPathStatus('正在加载...', '');
+  try {
+    const res = await fetch(fileUrl);
+    if (!res.ok) throw new Error(`无法访问文件（HTTP ${res.status}）`);
+    const text = await res.text();
+    fileMap.set(name, { text });
+    renderFileTags();
+    document.getElementById('local-input').value = '';
+    setPathStatus(`已加载：${name}`, 'ok');
+    setStatus(`已加载 ${fileMap.size} 个文件`, 'ok');
+  } catch(e) {
+    setPathStatus('加载失败：' + e.message + '（浏览器可能限制本地文件访问，请尝试拖拽上传）', 'err');
+  }
+}
+
+// Enter 键触发对应加载
+document.getElementById('url-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') loadFromUrl();
+});
+document.getElementById('local-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') loadFromLocal();
+});
 
 function renderFileTags() {
   fileList.innerHTML = '';
