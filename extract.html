@@ -87,8 +87,8 @@
   }
   input[type="text"]:focus { border-color: #89b4fa; }
 
-  /* 多关键词标签 */
-  #pattern-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; min-height: 28px; }
+  /* 关键词标签（包含 & 排除通用） */
+  .tags-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; min-height: 28px; }
   .ptag {
     display: flex; align-items: center; gap: 6px;
     border-radius: 4px; padding: 3px 10px; font-size: 0.82em;
@@ -96,7 +96,7 @@
   }
   .ptag .ptag-remove { cursor: pointer; font-weight: bold; opacity: 0.7; }
   .ptag .ptag-remove:hover { opacity: 1; }
-  /* 颜色循环 */
+  /* 包含关键词颜色 */
   .ptag-c0 { background:#1e3a5f; border-color:#89b4fa; color:#89b4fa; }
   .ptag-c1 { background:#2d4a1e; border-color:#a6e3a1; color:#a6e3a1; }
   .ptag-c2 { background:#4a2d1e; border-color:#fab387; color:#fab387; }
@@ -105,6 +105,18 @@
   .ptag-c5 { background:#1e4a4a; border-color:#94e2d5; color:#94e2d5; }
   .ptag-c6 { background:#4a1e2d; border-color:#f38ba8; color:#f38ba8; }
   .ptag-c7 { background:#2d3a4a; border-color:#74c7ec; color:#74c7ec; }
+  /* 排除关键词统一用红调 */
+  .ptag-ex { background:#3a1a1a; border-color:#f38ba8; color:#f38ba8; }
+
+  /* 排除区域 */
+  .exclude-block {
+    margin-top: 12px; padding: 10px 12px;
+    background: #1e1e2e; border: 1px solid #3a1a1a; border-radius: 6px;
+  }
+  .exclude-label {
+    font-size: 0.78em; color: #f38ba8; font-weight: bold;
+    margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+  }
 
   /* 匹配模式选择 */
   .mode-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
@@ -175,51 +187,55 @@
       <div class="help-section">
         <h3>基本流程</h3>
         <ul>
-          <li>① 上传文件：点击上传区域或拖拽文件，支持 .c .h .txt .log .csv 等任意文本文件，可一次上传多个。</li>
-          <li>② 添加关键词：在输入框输入关键词后按 <span class="kbd">Enter</span> 或点击「+ 添加」，可添加多个关键词（彩色标签区分）。</li>
-          <li>③ 选择匹配选项（大小写、正则等）。</li>
-          <li>④ 点击「提取匹配行」或按 <span class="kbd">Ctrl</span>+<span class="kbd">Enter</span> 执行搜索。</li>
-          <li>⑤ 在结果框中直接编辑内容，填写文件名后点击「下载结果文件」保存。</li>
+          <li>① 上传文件：点击或拖拽，支持 .c .h .txt .log .csv 等文本文件，可批量上传。</li>
+          <li>② 添加包含关键词：输入后按 <span class="kbd">Enter</span> 或「+ 添加」，多个关键词彩色标签区分。</li>
+          <li>③ 可选：添加排除关键词，命中排除词的行将从结果中剔除。</li>
+          <li>④ 设置匹配选项（大小写、正则、分组等）。</li>
+          <li>⑤ 点击「提取匹配行」或按 <span class="kbd">Ctrl</span>+<span class="kbd">Enter</span> 执行。</li>
+          <li>⑥ 在结果框直接编辑，填写文件名后点击「下载结果文件」保存。</li>
         </ul>
       </div>
 
-      <!-- 多关键词说明 -->
+      <!-- 包含关键词 -->
       <div class="help-section">
-        <h3>多关键词匹配模式</h3>
+        <h3>包含关键词模式</h3>
         <ul>
-          <li><b style="color:#cdd6f4">OR（任意命中）</b>：一行只需包含任意一个关键词即被提取，适合收集多个相关主题的行。</li>
-          <li><b style="color:#cdd6f4">AND（全部命中）</b>：一行必须同时包含所有关键词才被提取，适合精确过滤。</li>
+          <li><b style="color:#cdd6f4">OR（任意命中）</b>：含任意一个关键词即提取，适合多主题收集。</li>
+          <li><b style="color:#cdd6f4">AND（全部命中）</b>：须同时包含所有关键词，适合精确过滤。</li>
           <li><b style="color:#cdd6f4">合并</b>：所有匹配行按文件顺序混合输出。</li>
-          <li><b style="color:#cdd6f4">按关键词分组</b>：每个关键词单独输出其匹配结果，带分组标题，方便对比。</li>
+          <li><b style="color:#cdd6f4">按关键词分组</b>：每个关键词单独列出匹配结果，方便对比。</li>
         </ul>
       </div>
 
-      <!-- 选项说明 -->
+      <!-- 排除关键词 -->
       <div class="help-section">
-        <h3>选项说明</h3>
+        <h3>排除关键词模式</h3>
         <ul>
-          <li><b style="color:#cdd6f4">区分大小写</b>：勾选后 <span class="tag-demo">ABC</span> 与 <span class="tag-demo">abc</span> 视为不同字符串。</li>
-          <li><b style="color:#cdd6f4">正则表达式</b>：勾选后关键词按正则语法解析，支持完整 JavaScript 正则。</li>
-          <li><b style="color:#cdd6f4">显示文件名</b>：每行结果前加上来源文件名 <span class="tag-demo">[filename]</span>。</li>
-          <li><b style="color:#cdd6f4">显示行号</b>：每行结果前加上原始行号 <span class="tag-demo">L42:</span>。</li>
+          <li>在红色区域输入排除词，命中的行从结果中剔除，以 <span class="tag-demo" style="border-color:#f38ba8;color:#f38ba8;background:#3a1a1a">⊘ 词</span> 标签显示。</li>
+          <li><b style="color:#cdd6f4">OR（含任一即排除）</b>：含任意一个排除词即剔除（默认）。</li>
+          <li><b style="color:#cdd6f4">AND（全部命中才排除）</b>：须同时包含所有排除词才剔除。</li>
+          <li>排除词拥有独立的大小写、正则设置，标签角标 <span class="tag-demo">[Aa]</span> 表示区分大小写，<span class="tag-demo">[.*]</span> 表示正则。</li>
         </ul>
       </div>
 
-      <!-- 正则速查 -->
+      <!-- 选项 & 正则速查 -->
       <div class="help-section">
-        <h3>常用正则速查</h3>
+        <h3>选项 &amp; 常用正则</h3>
+        <ul style="margin-bottom:8px">
+          <li><b style="color:#cdd6f4">区分大小写</b>：<span class="tag-demo">ABC</span> 与 <span class="tag-demo">abc</span> 视为不同。</li>
+          <li><b style="color:#cdd6f4">正则表达式</b>：支持完整 JS 正则语法。</li>
+          <li><b style="color:#cdd6f4">显示文件名/行号</b>：结果前加 <span class="tag-demo">[file]</span> / <span class="tag-demo">L42:</span>。</li>
+        </ul>
         <table class="regex-table">
           <tr><th>表达式</th><th>含义</th></tr>
-          <tr><td>.</td><td>任意单个字符</td></tr>
-          <tr><td>.*</td><td>任意字符（0 个或多个）</td></tr>
+          <tr><td>.*</td><td>任意字符（0个或多个）</td></tr>
           <tr><td>\d+</td><td>一个或多个数字</td></tr>
-          <tr><td>\bword\b</td><td>精确匹配单词 word</td></tr>
-          <tr><td>foo|bar</td><td>匹配 foo 或 bar</td></tr>
-          <tr><td>^text</td><td>行首以 text 开头</td></tr>
-          <tr><td>text$</td><td>行尾以 text 结尾</td></tr>
-          <tr><td>[A-Z]</td><td>大写字母 A–Z 之一</td></tr>
-          <tr><td>\s+</td><td>一个或多个空白字符</td></tr>
-          <tr><td>(a|b)c</td><td>ac 或 bc</td></tr>
+          <tr><td>\bword\b</td><td>精确匹配单词</td></tr>
+          <tr><td>foo|bar</td><td>foo 或 bar</td></tr>
+          <tr><td>^text</td><td>行首匹配</td></tr>
+          <tr><td>text$</td><td>行尾匹配</td></tr>
+          <tr><td>[A-Z]</td><td>大写字母之一</td></tr>
+          <tr><td>\s+</td><td>一个或多个空白</td></tr>
         </table>
       </div>
 
@@ -256,8 +272,28 @@
     <button class="btn-neutral" onclick="clearPatterns()" style="white-space:nowrap">清除全部</button>
   </div>
 
-  <!-- 关键词标签列表 -->
-  <div id="pattern-tags"><span class="hint-empty">暂无关键词，请在上方输入后添加</span></div>
+  <!-- 包含关键词标签列表 -->
+  <div id="pattern-tags" class="tags-row"><span class="hint-empty">暂无关键词，请在上方输入后添加</span></div>
+
+  <!-- 排除关键词 -->
+  <div class="exclude-block">
+    <div class="exclude-label">⊘ 排除关键词（含该词的行将从结果中剔除）</div>
+    <div class="search-row">
+      <input type="text" id="exclude-input" placeholder="输入要排除的字符串，按 Enter 添加..." spellcheck="false">
+      <button class="btn-danger" onclick="addExclude()" style="white-space:nowrap">+ 排除</button>
+      <button class="btn-neutral" onclick="clearExcludes()" style="white-space:nowrap">清除</button>
+    </div>
+    <div class="opts" style="margin-top:6px; gap:16px;">
+      <label class="opt-label"><input type="checkbox" id="ex-case"> 区分大小写</label>
+      <label class="opt-label"><input type="checkbox" id="ex-regex"> 正则表达式</label>
+      <span style="display:flex;gap:6px;align-items:center;">
+        <span class="mode-label">排除模式：</span>
+        <button class="mode-btn active" id="ex-mode-or"  onclick="setExMode('or')">OR（含任一即排除）</button>
+        <button class="mode-btn"        id="ex-mode-and" onclick="setExMode('and')">AND（全部命中才排除）</button>
+      </span>
+    </div>
+    <div id="exclude-tags" class="tags-row"><span class="hint-empty">暂无排除词</span></div>
+  </div>
 
   <!-- 多词匹配模式 -->
   <div class="mode-row">
@@ -369,9 +405,11 @@ function clearFiles() {
 
 // ─── 多关键词管理 ────────────────────────────────────────────
 const patterns = []; // [{ raw, regex }]
-let matchMode  = 'or';   // 'or' | 'and'
-let groupMode  = 'merge'; // 'merge' | 'split'
-const COLORS   = 8;
+const excludes = []; // [{ raw, regex }]
+let matchMode   = 'or';    // 'or' | 'and'
+let exMatchMode = 'or';    // 'or' | 'and'
+let groupMode   = 'merge'; // 'merge' | 'split'
+const COLORS    = 8;
 
 function addPattern() {
   const input = document.getElementById('search-input');
@@ -420,6 +458,80 @@ function renderPatternTags() {
   ).join('');
 }
 
+// ─── 排除关键词管理 ──────────────────────────────────────────
+function addExclude() {
+  const input = document.getElementById('exclude-input');
+  const raw   = input.value.trim();
+  if (!raw) return;
+  if (excludes.find(e => e.raw === raw)) { setStatus(`排除词 "${raw}" 已存在`, 'err'); return; }
+  const caseSens = document.getElementById('ex-case').checked;
+  const useRegex = document.getElementById('ex-regex').checked;
+  let regex;
+  try {
+    const flags = caseSens ? 'g' : 'gi';
+    regex = useRegex ? new RegExp(raw, flags) : new RegExp(escRegex(raw), flags);
+  } catch(e) {
+    setStatus('排除词正则错误：' + e.message, 'err'); return;
+  }
+  excludes.push({ raw, regex, caseSens, useRegex });
+  input.value = '';
+  renderExcludeTags();
+  setStatus(`已添加排除词，共 ${excludes.length} 个`, 'ok');
+}
+
+function removeExclude(idx) {
+  excludes.splice(idx, 1);
+  renderExcludeTags();
+}
+
+function clearExcludes() {
+  excludes.length = 0;
+  renderExcludeTags();
+  setStatus('已清除所有排除词', '');
+}
+
+function renderExcludeTags() {
+  const container = document.getElementById('exclude-tags');
+  if (excludes.length === 0) {
+    container.innerHTML = '<span class="hint-empty">暂无排除词</span>';
+    return;
+  }
+  container.innerHTML = excludes.map((e, i) => {
+    const flags = (e.caseSens ? 'Aa' : '') + (e.useRegex ? '.*' : '');
+    const flagBadge = flags ? ` <span style="opacity:0.6;font-size:0.85em">[${flags}]</span>` : '';
+    return `<span class="ptag ptag-ex">
+       <span>⊘ ${escHtml(e.raw)}${flagBadge}</span>
+       <span class="ptag-remove" onclick="removeExclude(${i})" title="移除">✕</span>
+     </span>`;
+  }).join('');
+}
+
+function rebuildExcludeRegexes() {
+  for (const e of excludes) {
+    try {
+      const flags = e.caseSens ? 'g' : 'gi';
+      e.regex = e.useRegex ? new RegExp(e.raw, flags) : new RegExp(escRegex(e.raw), flags);
+    } catch(err) {
+      setStatus(`排除词 "${e.raw}" 正则错误：${err.message}`, 'err');
+      return false;
+    }
+  }
+  return true;
+}
+
+function setExMode(m) {
+  exMatchMode = m;
+  document.getElementById('ex-mode-or').classList.toggle('active',  m === 'or');
+  document.getElementById('ex-mode-and').classList.toggle('active', m === 'and');
+}
+
+function isExcluded(line) {
+  if (excludes.length === 0) return false;
+  if (exMatchMode === 'and')
+    return excludes.every(e => { e.regex.lastIndex = 0; return e.regex.test(line); });
+  return excludes.some(e => { e.regex.lastIndex = 0; return e.regex.test(line); });
+}
+
 function setMode(m) {
   matchMode = m;
   document.getElementById('mode-or').classList.toggle('active',  m === 'or');
@@ -457,9 +569,14 @@ function doSearch() {
   const inputVal = document.getElementById('search-input').value.trim();
   if (inputVal && !patterns.find(p => p.raw === inputVal)) addPattern();
 
+  // 若排除输入框有内容但未添加，自动添加
+  const excludeVal = document.getElementById('exclude-input').value.trim();
+  if (excludeVal && !excludes.find(e => e.raw === excludeVal)) addExclude();
+
   if (patterns.length === 0) { setStatus('请至少添加一个关键词', 'err'); return; }
   if (fileMap.size === 0)    { setStatus('请先上传文件', 'err'); return; }
   if (!rebuildRegexes())     return;
+  if (!rebuildExcludeRegexes()) return;
 
   const outputLines = [];
   let totalMatch = 0;
@@ -472,7 +589,7 @@ function doSearch() {
         const fileLines = text.split(/\r?\n/);
         fileLines.forEach((line, idx) => {
           p.regex.lastIndex = 0;
-          if (p.regex.test(line)) {
+          if (p.regex.test(line) && !isExcluded(line)) {
             let out = '';
             if (showFile) out += `[${name}] `;
             if (showLine) out += `L${idx + 1}: `;
@@ -494,7 +611,7 @@ function doSearch() {
         const hit = matchMode === 'and'
           ? patterns.every(p => { p.regex.lastIndex = 0; return p.regex.test(line); })
           : patterns.some(p  => { p.regex.lastIndex = 0; return p.regex.test(line); });
-        if (hit) {
+        if (hit && !isExcluded(line)) {
           let out = '';
           if (showFile) out += `[${name}] `;
           if (showLine) out += `L${idx + 1}: `;
@@ -512,8 +629,9 @@ function doSearch() {
 
   document.getElementById('output').value = outputLines.join('\n').replace(/^\n/, '');
   document.getElementById('result-count').textContent = `共匹配 ${totalMatch} 行`;
+  const exInfo = excludes.length > 0 ? `，排除词 ${excludes.length} 个` : '';
   setStatus(
-    `搜索完成：${patterns.length} 个关键词 × ${fileMap.size} 个文件，` +
+    `搜索完成：${patterns.length} 个关键词 × ${fileMap.size} 个文件${exInfo}，` +
     `匹配 ${totalMatch} 行（${matchMode.toUpperCase()} 模式）`,
     totalMatch > 0 ? 'ok' : ''
   );
@@ -550,6 +668,10 @@ function escAttr(s)  { return s.replace(/'/g,"\\'"); }
 // Enter 键添加关键词，Ctrl+Enter 触发搜索
 document.getElementById('search-input').addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.ctrlKey) { e.preventDefault(); addPattern(); }
+  if (e.key === 'Enter' &&  e.ctrlKey) { e.preventDefault(); doSearch(); }
+});
+document.getElementById('exclude-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.ctrlKey) { e.preventDefault(); addExclude(); }
   if (e.key === 'Enter' &&  e.ctrlKey) { e.preventDefault(); doSearch(); }
 });
 
